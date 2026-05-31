@@ -64,6 +64,9 @@
   </div>
 </div>
 <script>
+const ELEVEN_KEY = 'sk_6ffb2167755a925248939b26ffc956e1c4c9f2f1199ba31b';
+const ELEVEN_VOICE_ID = 'TxGEqnHWrfWFTfGW9XjX'; // Josh — warm, male, American
+
 const responses = {
   weather:"Ninety-something degrees and you're out there without sunscreen, aren't you. Grab the SPF 50 before you do anything else — that's not a suggestion.",
   water:"That's not great. Your body's been running on fumes. Go get a glass right now — not after this, right now.",
@@ -78,24 +81,6 @@ const speechText = document.getElementById('speechText');
 const mouthOverlay = document.getElementById('mouthOverlay');
 const buttons = document.querySelectorAll('.q-btn');
 let mouthInterval = null;
-let voiceList = [];
-
-function loadVoices() {
-  const v = window.speechSynthesis.getVoices();
-  if (v.length > 0) voiceList = v;
-}
-loadVoices();
-window.speechSynthesis.onvoiceschanged = loadVoices;
-
-function getBestVoice() {
-  loadVoices();
-  return voiceList.find(v => v.name === 'Daniel') ||
-         voiceList.find(v => v.name === 'Karen') ||
-         voiceList.find(v => v.name === 'Samantha') ||
-         voiceList.find(v => v.name === 'Fred') ||
-         voiceList.find(v => v.lang && v.lang.startsWith('en-')) ||
-         null;
-}
 
 function setSpeaking(on) {
   if (on) {
@@ -112,6 +97,7 @@ function enableButtons()  { buttons.forEach(b => b.disabled = false); }
 function disableButtons() { buttons.forEach(b => b.disabled = true); }
 
 function typeText(text) {
+  speechText.style.color = '';
   speechText.className = 'speech-text';
   speechText.textContent = '';
   let i = 0;
@@ -121,39 +107,61 @@ function typeText(text) {
   next();
 }
 
-function ask(key) {
+async function speakWithElevenLabs(text) {
+  try {
+    const res = await fetch('https://api.elevenlabs.io/v1/text-to-speech/' + ELEVEN_VOICE_ID, {
+      method: 'POST',
+      headers: {
+        'xi-api-key': ELEVEN_KEY,
+        'Content-Type': 'application/json',
+        'Accept': 'audio/mpeg'
+      },
+      body: JSON.stringify({
+        text: text,
+        model_id: 'eleven_monolingual_v1',
+        voice_settings: { stability: 0.5, similarity_boost: 0.75 }
+      })
+    });
+
+    if (!res.ok) throw new Error('ElevenLabs error: ' + res.status);
+
+    const arrayBuffer = await res.arrayBuffer();
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+    const source = audioCtx.createBufferSource();
+    source.buffer = audioBuffer;
+    source.connect(audioCtx.destination);
+
+    setSpeaking(true);
+    source.start(0);
+    source.onended = () => { setSpeaking(false); enableButtons(); };
+
+  } catch(err) {
+    console.error(err);
+    setSpeaking(false);
+    enableButtons();
+    speechText.textContent = 'Audio error — ' + err.message;
+  }
+}
+
+async function ask(key) {
   const text = responses[key];
   disableButtons();
-  window.speechSynthesis.cancel();
+  setSpeaking(false);
 
-  const u = new SpeechSynthesisUtterance(text);
-  const voice = getBestVoice();
-  if (voice) u.voice = voice;
-  u.rate = 0.9;
-  u.pitch = 0.85;
-  u.volume = 1.0;
-
-  u.onstart = () => setSpeaking(true);
-  u.onend   = () => { setSpeaking(false); enableButtons(); };
-  u.onerror = () => { setSpeaking(false); enableButtons(); };
-
-  window.speechSynthesis.speak(u);
-
-  speechText.style.color = '#E8FF00';
+  speechText.style.color = '#777';
   speechText.className = 'speech-text';
-  speechText.textContent = voice ? 'Voice: ' + voice.name : 'Voice: default';
-  setTimeout(() => typeText(text), 800);
+  speechText.textContent = '...';
+
+  // Type text and fetch audio in parallel
+  setTimeout(() => typeText(text), 300);
+  await speakWithElevenLabs(text);
 }
 
 function debugVoices() {
-  loadVoices();
   speechText.style.color = '#E8FF00';
-  speechText.style.fontSize = '11px';
-  speechText.style.webkitLineClamp = '8';
   speechText.className = 'speech-text';
-  speechText.textContent = voiceList.length
-    ? voiceList.map(v => v.name + ' [' + v.lang + ']').join('  |  ')
-    : 'No voices loaded yet';
+  speechText.textContent = 'Using ElevenLabs — Josh voice';
 }
 </script>
 </body>
