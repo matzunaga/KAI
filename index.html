@@ -115,11 +115,17 @@ function ask(key) {
 
   // Get best available English male voice
   const voices = window.speechSynthesis.getVoices();
-  const pick = voices.find(v => v.name === 'Daniel') ||
-               voices.find(v => v.name === 'Karen') ||
-               voices.find(v => v.name === 'Samantha') ||
-               voices.find(v => v.lang && v.lang.startsWith('en-'));
-  if (pick) u.voice = pick;
+  const voices2 = window.speechSynthesis.getVoices();
+  const pick = voices2.find(v => v.name === 'Daniel') ||
+               voices2.find(v => v.name === 'Karen') ||
+               voices2.find(v => v.name === 'Samantha') ||
+               voices2.find(v => v.lang && v.lang.startsWith('en-'));
+  if (pick) {
+    u.voice = pick;
+    speechText.textContent = 'Using: ' + pick.name;
+  } else {
+    speechText.textContent = 'No voice found — using default';
+  }
 
   u.rate = 0.9;
   u.pitch = 0.85;
