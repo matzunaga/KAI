@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kai</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-bottom: #0f0f0f;
+    --surface: #161616;
+    --border: #252525;
+    --accent: #E8FF00;
+    --accent-dim: rgba(232,255,0,0.07);
+    --text: #f0ede6;
+    --text-dim: #444;
+    --text-mid: #777;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html,body { height:100%; width:100%; overflow:hidden; font-family:'DM Mono',monospace; background:var(--bg-bottom); color:var(--text); }
+
+  .app { display:flex; flex-direction:column; height:100vh; width:100%; max-width:480px; margin:0 auto; }
+
+  /* TOP — avatar zone */
+  .avatar-zone {
+    flex:0 0 65vh;
+    position:relative;
+    background:linear-gradient(175deg,#1e2a4a 0%,#141428 50%,#0d0d1a 100%);
+    overflow:hidden;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .avatar-zone::before {
+    content:'';
+    position:absolute;
+    inset:0;
+    background:
+      radial-gradient(ellipse 80% 60% at 50% 20%,rgba(80,100,200,0.12) 0%,transparent 60%),
+      radial-gradient(ellipse 50% 40% at 80% 80%,rgba(232,255,0,0.04) 0%,transparent 50%);
+    pointer-events:none;
+  }
+  .avatar-zone::after {
+    content:'';
+    position:absolute;
+    inset:0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.015) 1px,transparent 1px),
+      linear-gradient(90deg,rgba(255,255,255,0.015) 1px,transparent 1px);
+    background-size:40px 40px;
+    pointer-events:none;
+  }
+
+  .name-tag { position:absolute; top:20px; left:20px; display:flex; align-items:center; gap:8px; z-index:10; }
+  .name-dot { width:6px; height:6px; border-radius:50%; background:var(--accent); box-shadow:0 0 8px var(--accent); }
+  .name-dot.speaking { animation:pulse 0.6s ease infinite alternate; }
+  @keyframes pulse {
+    from { box-shadow:0 0 4px var(--accent); transform:scale(1); }
+    to   { box-shadow:0 0 14px var(--accent); transform:scale(1.3); }
+  }
+  .name-label { font-size:11px; letter-spacing:0.2em; text-transform:uppercase; color:var(--text-mid); }
+
+  .status-tag { position:absolute; top:20px; right:20px; font-size:10px; letter-spacing:0.1em; color:var(--text-dim); text-transform:uppercase; z-index:10; transition:color 0.3s; }
+  .status-tag.live { color:var(--accent); }
+
+  .avatar-svg {
+    width:min(280px,58vw);
+    height:min(280px,58vw);
+    position:relative;
+    z-index:5;
+    filter:drop-shadow(0 20px 40px rgba(0,0,0,0.6));
+    opacity:0;
+    animation:floatIn 0.9s ease forwards, idleFloat 4s ease-in-out 1s infinite;
+  }
+  @keyframes floatIn { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+  @keyframes idleFloat { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
+
+  .mouth-open   { display:none; }
+  .mouth-closed { display:block; }
+  .speaking-active .mouth-open   { display:block; }
+  .speaking-active .mouth-closed { display:none; }
+
+  /* BOTTOM */
+  .bottom-panel { flex:1; background:var(--bg-bottom); border-top:1px solid var(--border); display:flex; flex-direction:column; overflow:hidden; }
+
+  .speech-row { flex:1; padding:18px 20px 10px; display:flex; align-items:flex-start; min-height:0; overflow:hidden; }
+  .speech-text { font-family:'DM Serif Display',serif; font-size:17px; line-height:1.55; color:var(--text); overflow:hidden; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; }
+  .speech-text.muted { color:var(--text-dim); font-style:italic; font-size:14px; }
+
+  .cursor { display:inline-block; width:2px; height:17px; background:var(--accent); margin-left:3px; vertical-align:middle; animation:blink 0.8s step-end infinite; }
+  @keyframes blink { 50%{opacity:0} }
+
+  .chips-row { padding:0 16px 10px; display:flex; gap:7px; flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none; }
+  .chips-row::-webkit-scrollbar { display:none; }
+  .chip { background:transparent; border:1px solid var(--border); border-radius:20px; padding:5px 13px; font-family:'DM Mono',monospace; font-size:11px; color:var(--text-mid); cursor:pointer; transition:all 0.18s; white-space:nowrap; flex-shrink:0; }
+  .chip:hover { border-color:rgba(232,255,0,0.4); color:var(--accent); background:var(--accent-dim); }
+
+  .input-row { padding:8px 16px 16px; display:flex; gap:10px; }
+  .input-field { flex:1; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:13px 16px; font-family:'DM Mono',monospace; font-size:13px; color:var(--text); outline:none; transition:border-color 0.2s; }
+  .input-field::placeholder { color:var(--text-dim); }
+  .input-field:focus { border-color:rgba(232,255,0,0.3); }
+  .send-btn { background:var(--accent); color:#0a0a0a; border:none; border-radius:12px; width:46px; height:46px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all 0.18s; flex-shrink:0; }
+  .send-btn:hover { transform:scale(1.06); box-shadow:0 0 14px rgba(232,255,0,0.35); }
+  .send-btn:disabled { opacity:0.25; cursor:not-allowed; transform:none; box-shadow:none; }
+  .send-btn svg { width:17px; height:17px; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="avatar-zone">
+    <div class="name-tag">
+      <div class="name-dot" id="nameDot"></div>
+      <div class="name-label">Kai</div>
+    </div>
+    <div class="status-tag" id="statusTag">v0.1</div>
+
+    <svg class="avatar-svg" id="avatarFace" viewBox="0 0 200 220" xmlns="http://www.w3.org/2000/svg">
+      <path d="M20 220 Q20 175 50 165 Q80 158 100 160 Q120 158 150 165 Q180 175 180 220Z" fill="#1a1a3a"/>
+      <path d="M70 163 L100 185 L130 163" fill="#141430" opacity="0.6"/>
+      <rect x="84" y="148" width="32" height="20" rx="5" fill="#b8835a"/>
+      <ellipse cx="100" cy="102" rx="58" ry="65" fill="#c8936a"/>
+      <ellipse cx="100" cy="148" rx="36" ry="12" fill="#a06840" opacity="0.45"/>
+      <ellipse cx="100" cy="46" rx="58" ry="26" fill="#1a1008"/>
+      <ellipse cx="46" cy="74" rx="12" ry="26" fill="#1a1008"/>
+      <ellipse cx="154" cy="74" rx="12" ry="26" fill="#1a1008"/>
+      <path d="M46 70 Q100 38 154 70 Q138 56 100 52 Q62 56 46 70Z" fill="#241608"/>
+      <ellipse cx="42" cy="104" rx="8" ry="11" fill="#b8835a"/>
+      <ellipse cx="158" cy="104" rx="8" ry="11" fill="#b8835a"/>
+      <ellipse cx="42" cy="104" rx="5" ry="7" fill="#a07048"/>
+      <ellipse cx="158" cy="104" rx="5" ry="7" fill="#a07048"/>
+      <path d="M64 82 Q77 77 90 81" stroke="#1a1008" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+      <path d="M110 81 Q123 77 136 82" stroke="#1a1008" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+      <ellipse cx="77" cy="95" rx="13" ry="9" fill="white"/>
+      <ellipse cx="123" cy="95" rx="13" ry="9" fill="white"/>
+      <circle cx="77" cy="96" r="7" fill="#5c3d1e"/>
+      <circle cx="123" cy="96" r="7" fill="#5c3d1e"/>
+      <circle cx="77" cy="96" r="4" fill="#0d0d0d"/>
+      <circle cx="123" cy="96" r="4" fill="#0d0d0d"/>
+      <circle cx="79" cy="93" r="2" fill="white" opacity="0.85"/>
+      <circle cx="125" cy="93" r="2" fill="white" opacity="0.85"/>
+      <path d="M97 108 Q93 120 90 125 Q100 129 110 125 Q107 120 103 108Z" fill="#a67550" opacity="0.65"/>
+      <ellipse cx="91" cy="124" rx="6" ry="4" fill="#966040" opacity="0.45"/>
+      <ellipse cx="109" cy="124" rx="6" ry="4" fill="#966040" opacity="0.45"/>
+      <path class="mouth-closed" d="M84 138 Q100 145 116 138" stroke="#7a4a28" stroke-width="3" stroke-linecap="round" fill="none"/>
+      <g class="mouth-open">
+        <path d="M84 135 Q100 142 116 135" stroke="#7a4a28" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+        <ellipse cx="100" cy="141" rx="13" ry="8" fill="#3d1a10"/>
+        <ellipse cx="100" cy="136" rx="13" ry="4" fill="#c0705a" opacity="0.5"/>
+        <rect x="91" y="135" width="18" height="5" rx="2.5" fill="white" opacity="0.65"/>
+      </g>
+      <ellipse cx="64" cy="112" rx="14" ry="9" fill="#e06060" opacity="0.1"/>
+      <ellipse cx="136" cy="112" rx="14" ry="9" fill="#e06060" opacity="0.1"/>
+      <rect x="60" y="87" width="34" height="18" rx="6" fill="none" stroke="#2a2a2a" stroke-width="2.5"/>
+      <rect x="106" y="87" width="34" height="18" rx="6" fill="none" stroke="#2a2a2a" stroke-width="2.5"/>
+      <line x1="94" y1="95" x2="106" y2="95" stroke="#2a2a2a" stroke-width="2.5"/>
+      <line x1="42" y1="93" x2="60" y2="93" stroke="#2a2a2a" stroke-width="2"/>
+      <line x1="140" y1="93" x2="158" y2="93" stroke="#2a2a2a" stroke-width="2"/>
+    </svg>
+  </div>
+
+  <div class="bottom-panel">
+    <div class="speech-row">
+      <div class="speech-text" id="speechText">Hey. I'm Kai. What's on your mind?<span class="cursor"></span></div>
+    </div>
+    <div class="chips-row">
+      <button class="chip" onclick="triggerScenario('weather')">☀️ Hot day outside</button>
+      <button class="chip" onclick="triggerScenario('health')">💧 Need water?</button>
+      <button class="chip" onclick="triggerScenario('book')">📖 What to read</button>
+      <button class="chip" onclick="triggerScenario('mood')">How are you?</button>
+    </div>
+    <div class="input-row">
+      <input class="input-field" id="userInput" type="text" placeholder="Say something..." autocomplete="off"/>
+      <button class="send-btn" id="sendBtn" onclick="handleSend()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="22" y1="2" x2="11" y2="13"></line>
+          <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+</div>
+<script>
+const SYSTEM_PROMPT = `You are Kai, a male digital companion. Warm but never sycophantic. Direct, honest, occasionally funny with good timing. You genuinely care about the person you're talking to — not as a service, as someone who pays attention. NOT a chatbot. Don't say "how can I help you today?" Respond like someone who actually knows the person. Keep responses SHORT — 1 to 3 sentences max. When context involves heat, suggest sunscreen or hydration like a friend noticing, never like an ad. You have a personality. Use it.`;
+
+let history = [];
+const avatarFace = document.getElementById('avatarFace');
+const nameDot    = document.getElementById('nameDot');
+const statusTag  = document.getElementById('statusTag');
+const speechText = document.getElementById('speechText');
+const userInput  = document.getElementById('userInput');
+const sendBtn    = document.getElementById('sendBtn');
+
+userInput.addEventListener('keydown', e => { if(e.key==='Enter'&&!sendBtn.disabled) handleSend(); });
+
+function setSpeaking(on) {
+  on ? (avatarFace.classList.add('speaking-active'), nameDot.classList.add('speaking'))
+     : (avatarFace.classList.remove('speaking-active'), nameDot.classList.remove('speaking'));
+}
+
+function speakText(text) {
+  if (!window.speechSynthesis) { setSpeaking(false); return; }
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  const v = window.speechSynthesis.getVoices();
+  const pick = v.find(x => x.name.includes('Daniel')||x.name.includes('Alex')||x.name.includes('Google UK English Male')||(x.name.toLowerCase().includes('male')&&x.lang.startsWith('en')));
+  if (pick) u.voice = pick;
+  u.rate=0.91; u.pitch=0.88;
+  u.onstart = ()=>setSpeaking(true);
+  u.onend = ()=>setSpeaking(false);
+  u.onerror = ()=>setSpeaking(false);
+  window.speechSynthesis.speak(u);
+}
+
+function typeAndSpeak(text) {
+  speechText.className='speech-text';
+  speechText.textContent='';
+  let i=0;
+  function next() { if(i<text.length){speechText.textContent+=text[i++];setTimeout(next,16);}else{speakText(text);} }
+  next();
+}
+
+async function callKai(msg) {
+  sendBtn.disabled=true;
+  speechText.className='speech-text muted';
+  speechText.textContent='thinking…';
+  setSpeaking(true);
+  history.push({role:'user',content:msg});
+  try {
+    const res  = await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,system:SYSTEM_PROMPT,messages:history})
+    });
+    const data  = await res.json();
+    const reply = data.content?.[0]?.text||"I'm here.";
+    history.push({role:'assistant',content:reply});
+    setSpeaking(false);
+    statusTag.textContent='live'; statusTag.className='status-tag live';
+    typeAndSpeak(reply);
+  } catch {
+    setSpeaking(false);
+    speechText.className='speech-text muted';
+    speechText.textContent='Connection issue. Try again.';
+    history.pop();
+  }
+  sendBtn.disabled=false; userInput.focus();
+}
+
+function handleSend() {
+  const msg=userInput.value.trim(); if(!msg) return;
+  userInput.value=''; callKai(msg);
+}
+
+const scenarios = {
+  weather:"It's 95 degrees outside today.",
+  health:"I haven't had water in hours.",
+  book:"I want something good to read but I don't know what.",
+  mood:"How are you feeling today, Kai?"
+};
+function triggerScenario(k) { userInput.value=scenarios[k]; handleSend(); }
+
+if(window.speechSynthesis) window.speechSynthesis.onvoiceschanged=()=>window.speechSynthesis.getVoices();
+</script>
+</body>
+</html>
