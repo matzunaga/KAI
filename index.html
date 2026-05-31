@@ -78,6 +78,24 @@ const speechText = document.getElementById('speechText');
 const mouthOverlay = document.getElementById('mouthOverlay');
 const buttons = document.querySelectorAll('.q-btn');
 let mouthInterval = null;
+let voiceList = [];
+
+function loadVoices() {
+  const v = window.speechSynthesis.getVoices();
+  if (v.length > 0) voiceList = v;
+}
+loadVoices();
+window.speechSynthesis.onvoiceschanged = loadVoices;
+
+function getBestVoice() {
+  loadVoices();
+  return voiceList.find(v => v.name === 'Daniel') ||
+         voiceList.find(v => v.name === 'Karen') ||
+         voiceList.find(v => v.name === 'Samantha') ||
+         voiceList.find(v => v.name === 'Fred') ||
+         voiceList.find(v => v.lang && v.lang.startsWith('en-')) ||
+         null;
+}
 
 function setSpeaking(on) {
   if (on) {
@@ -90,16 +108,15 @@ function setSpeaking(on) {
   }
 }
 
-function enableButtons() { buttons.forEach(b => b.disabled = false); }
+function enableButtons()  { buttons.forEach(b => b.disabled = false); }
 function disableButtons() { buttons.forEach(b => b.disabled = true); }
 
-function typeText(text, cb) {
+function typeText(text) {
   speechText.className = 'speech-text';
   speechText.textContent = '';
   let i = 0;
   function next() {
     if (i < text.length) { speechText.textContent += text[i++]; setTimeout(next, 15); }
-    else if (cb) cb();
   }
   next();
 }
@@ -107,26 +124,11 @@ function typeText(text, cb) {
 function ask(key) {
   const text = responses[key];
   disableButtons();
-
-  // MUST call speak() synchronously inside the tap handler for iOS
   window.speechSynthesis.cancel();
 
   const u = new SpeechSynthesisUtterance(text);
-
-  // Get best available English male voice
-  const voices = window.speechSynthesis.getVoices();
-  const voices2 = window.speechSynthesis.getVoices();
-  const pick = voices2.find(v => v.name === 'Daniel') ||
-               voices2.find(v => v.name === 'Karen') ||
-               voices2.find(v => v.name === 'Samantha') ||
-               voices2.find(v => v.lang && v.lang.startsWith('en-'));
-  if (pick) {
-    u.voice = pick;
-    speechText.textContent = 'Using: ' + pick.name;
-  } else {
-    speechText.textContent = 'No voice found — using default';
-  }
-
+  const voice = getBestVoice();
+  if (voice) u.voice = voice;
   u.rate = 0.9;
   u.pitch = 0.85;
   u.volume = 1.0;
@@ -135,27 +137,23 @@ function ask(key) {
   u.onend   = () => { setSpeaking(false); enableButtons(); };
   u.onerror = () => { setSpeaking(false); enableButtons(); };
 
-  // Speak immediately — synchronous with tap
   window.speechSynthesis.speak(u);
 
-  // Type text in parallel
-  speechText.className = 'speech-text muted';
-  speechText.textContent = '...';
-  setTimeout(() => typeText(text), 200);
+  speechText.style.color = '#E8FF00';
+  speechText.className = 'speech-text';
+  speechText.textContent = voice ? 'Voice: ' + voice.name : 'Voice: default';
+  setTimeout(() => typeText(text), 800);
 }
 
-// Preload voices as early as possible
 function debugVoices() {
-  const voices = window.speechSynthesis.getVoices();
-  const names = voices.map(v => v.name + ' [' + v.lang + ']').join('\n');
-  speechText.className = 'speech-text muted';
-  speechText.style.fontSize = '10px';
-  speechText.style.webkitLineClamp = '6';
-  speechText.textContent = names || 'No voices found';
-}
-window.speechSynthesis.getVoices();
-if (window.speechSynthesis.onvoiceschanged !== undefined) {
-  window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+  loadVoices();
+  speechText.style.color = '#E8FF00';
+  speechText.style.fontSize = '11px';
+  speechText.style.webkitLineClamp = '8';
+  speechText.className = 'speech-text';
+  speechText.textContent = voiceList.length
+    ? voiceList.map(v => v.name + ' [' + v.lang + ']').join('  |  ')
+    : 'No voices loaded yet';
 }
 </script>
 </body>
