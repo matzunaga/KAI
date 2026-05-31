@@ -60,6 +60,7 @@
       <button class="q-btn" onclick="ask('monday')">Ugh, it's Monday</button>
       <button class="q-btn" onclick="ask('advice')">Give me some advice</button>
     </div>
+    <button class="q-btn" style="margin-top:4px;grid-column:span 2;color:#555;font-size:10px;" onclick="debugVoices()">debug: show available voices</button>
   </div>
 </div>
 <script>
@@ -142,6 +143,14 @@ function ask(key) {
 }
 
 // Preload voices as early as possible
+function debugVoices() {
+  const voices = window.speechSynthesis.getVoices();
+  const names = voices.map(v => v.name + ' [' + v.lang + ']').join('\n');
+  speechText.className = 'speech-text muted';
+  speechText.style.fontSize = '10px';
+  speechText.style.webkitLineClamp = '6';
+  speechText.textContent = names || 'No voices found';
+}
 window.speechSynthesis.getVoices();
 if (window.speechSynthesis.onvoiceschanged !== undefined) {
   window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
